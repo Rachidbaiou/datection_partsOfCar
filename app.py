@@ -1,95 +1,49 @@
+from transformers import AutoImageProcessor, AutoModelForImageClassification
 import cv2
 import numpy as np
 from ultralytics import YOLO
 from PIL import Image
 import os
-import streamlit as st
+import streamlit as st  
 
-# Charger le modèle YOLO
-model = YOLO('yolov9c.pt')
+processor = AutoImageProcessor.from_pretrained("CarViT")
+model = AutoModelForImageClassification.from_pretrained("CarViT")
+def classify_image(image):
+    """Classifies an image using the CarViT model.
 
-# Chemin du dossier temporaire pour stocker les images téléchargées
-UPLOAD_FOLDER = 'uploads'
+    Args:
+        image: A PIL Image object or NumPy array representing the image.
 
-# Vérifiez si le dossier existe, sinon, créez-le
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+    Returns:
+        A tuple containing the predicted class and its probability.
+    """
 
-st.title('detection parts of car')
+    inputs = processor(image=image, return_tensors="pt")  # Preprocess image
+    outputs = model(**inputs)  # Make predictions
+    predictions = outputs.logits.squeeze().softmax(dim=0)  # Get probabilities
+    predicted_class = predictions.argmax().item()  # Get predicted class index
+    predicted_prob = predictions[predicted_class].item()  # Get probability for predicted class
 
-# Afficher le formulaire de téléchargement de fichier
+    return predicted_class, predicted_prob
 uploaded_file = st.file_uploader("Télécharger une image", type=["jpg", "jpeg", "png"])
-camera_file = st.camera_input("Prendre une photo", key="camera", label_visibility="hidden")
-
-def process_image(image):
-    # Convertir l'image en tableau numpy
-    img_np = np.array(image)
-    
-    # Détecter les objets dans l'image
-    results = model(img_np)
-    class_names = model.names
-    
-    # Initialiser le compteur d'objets
-    total_objects = 0
-    
-    # Compteur pour chaque type d'objet détecté
-    object_counts = {}
-
-    # Dessiner les résultats sur l'image
-    for result in results:
-        boxes = result.boxes.xyxy.cpu().numpy()  # Les coordonnées des bounding boxes
-        scores = result.boxes.conf.cpu().numpy()  # Les scores de confiance
-        classes = result.boxes.cls.cpu().numpy()  # Les classes prédites
-        
-        for box, score, cls in zip(boxes, scores, classes):
-            total_objects += 1
-            x1, y1, x2, y2 = map(int, box)  # Convertir les coordonnées en entiers
-            label = f"{class_names[int(cls)]}: {score:.2f}"  # Créer le label à afficher
-            
-            # Dessiner le rectangle
-            cv2.rectangle(img_np, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            
-            # Dessiner le label
-            cv2.putText(img_np, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-            
-            # Compter le nombre d'occurrences de chaque type d'objet détecté
-            class_name = class_names[int(cls)]
-            object_counts[class_name] = object_counts.get(class_name, 0) + 1
-
-    return img_np, total_objects, object_counts
-
 if uploaded_file is not None:
-    # Charger l'image depuis le fichier uploadé
-    img = Image.open(uploaded_file)
-    processed_img, total_objects, object_counts = process_image(img)
-    
-    # Afficher l'image annotée
-    st.image(processed_img, channels="BGR")
-    
-    if total_objects > 0:
-        st.write(f"Nombre total d'objets détectés : {total_objects}")
+    image = Image.open(uploaded_file)  # Read uploaded image
+    st.image(image, caption="Uploaded Image")
 
-        # Afficher le nombre d'occurrences de chaque type d'objet détecté
-        st.write("Occurrences par type d'objet :")
-        for class_name, count in object_counts.items():
-            st.write(f"- {class_name} : {count}")
-    else:
-        st.write("Aucun objet détecté")
-    
-if camera_file is not None:
-    # Charger l'image depuis la caméra
-    img = Image.open(camera_file)
-    processed_img, total_objects, object_counts = process_image(img)
-    
-    # Afficher l'image annotée
-    st.image(processed_img, channels="BGR")
-    
-    if total_objects > 0:
-        st.write(f"Nombre total d'objets détectés : {total_objects}")
+    # Classify image only if a valid image is uploaded
+    if image.mode == 'RGB':
+        predicted_class, predicted_prob = classify_image(image)
+        class_names = {  # Assuming you have class names (modify as needed)
+            0: "Car",
+            1: "Truck",
+            2: "Motorcycle",
+            # Add more classes as needed
+        }
 
-        # Afficher le nombre d'occurrences de chaque type d'objet détecté
-        st.write("Occurrences par type d'objet :")
-        for class_name, count in object_counts.items():
-            st.write(f"- {class_name} : {count}")
+        predicted_class_name = class_names[predicted_class]
+        st.success(f"Predicted Class: {predicted_class_name} (Probability: {predicted_prob:.4f})")
     else:
-        st.write("Aucun objet détecté")
+        st.warning("Please upload an RGB image (JPG, JPEG, or PNG).")
+
+else:
+    st.info("Upload an image to start classification.")

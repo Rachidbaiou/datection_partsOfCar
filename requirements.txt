@@ -4,3 +4,4 @@ torch
 ultralytics 
 pillow
 streamlit 
+transformers
