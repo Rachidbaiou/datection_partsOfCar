@@ -17,7 +17,8 @@ def classify_image(image):
     Returns:
         A tuple containing the predicted class and its probability.
     """
-
+    image = np.asarray(image)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) 
     inputs = processor(image=image, return_tensors="pt")  # Preprocess image
     outputs = model(**inputs)  # Make predictions
     predictions = outputs.logits.squeeze().softmax(dim=0)  # Get probabilities
