@@ -8,6 +8,8 @@ import streamlit as st
 
 processor = AutoImageProcessor.from_pretrained("CarViT")
 model = AutoModelForImageClassification.from_pretrained("CarViT")
+config = model.config
+class_names = config.id2label
 def classify_image(image):
     """Classifies an image using the CarViT model.
 
@@ -33,12 +35,7 @@ if uploaded_file is not None:
     # Classify image only if a valid image is uploaded
     if image.mode == 'RGB':
         predicted_class, predicted_prob = classify_image(image)
-        class_names = {  # Assuming you have class names (modify as needed)
-            0: "Car",
-            1: "Truck",
-            2: "Motorcycle",
-            # Add more classes as needed
-        }
+       
 
         predicted_class_name = class_names[predicted_class]
         st.success(f"Predicted Class: {predicted_class_name} (Probability: {predicted_prob:.4f})")

@@ -5,6 +5,9 @@ from PIL import Image
 processor = AutoImageProcessor.from_pretrained("CarViT")
 model = AutoModelForImageClassification.from_pretrained("CarViT")
 
+config = model.config
+class_labels = config.id2label
+print(config.id2label)
 # Load the image
 image = Image.open("CarViT/images/Acura.jpg")
 
