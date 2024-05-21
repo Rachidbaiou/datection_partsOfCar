@@ -5,5 +5,3 @@ ultralytics
 pillow
 streamlit 
 transformers
-AutoImageProcessor
-AutoModelForImageClassification
